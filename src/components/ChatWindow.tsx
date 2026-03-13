@@ -41,6 +41,8 @@ const ChatWindow: React.FC = () => {
   const [lastResponse, setLastResponse] = useState<AskResponse | null>(null);
   const [activeQuizTopic, setActiveQuizTopic] = useState<string | null>(null);
   
+
+  
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

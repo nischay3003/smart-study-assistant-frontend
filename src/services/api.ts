@@ -2,6 +2,7 @@ import axios from 'axios';
 
 
 
+
 /**
  * BACKEND CONNECTION CONFIGURATION
  * 
@@ -9,7 +10,7 @@ import axios from 'axios';
  * 2. If your backend is on the same domain, keep it as '/api' or your base path.
  */
 const api = axios.create({
-  baseURL: 'http://localhost:5000', // <--- UPDATE THIS TO YOUR BACKEND URL
+  baseURL: import.meta.env.VITE_BACKEND_URL, // <--- UPDATE THIS TO YOUR BACKEND URL
   headers: {
     'Content-Type': 'application/json',
     
