@@ -4,31 +4,37 @@ import { CheckCircle2, XCircle, ArrowRight, RotateCcw, Loader2 } from 'lucide-re
 import { motion, AnimatePresence } from 'motion/react';
 
 interface QuizPanelProps {
-  topic: string;
+  topic?: string;
+  questions?: QuizQuestion[];
   onClose: () => void;
 }
 
-const QuizPanel: React.FC<QuizPanelProps> = ({ topic, onClose }) => {
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [loading, setLoading] = useState(true);
+const QuizPanel: React.FC<QuizPanelProps> = ({ topic, questions: propQuestions, onClose }) => {
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>(propQuestions || []);
+  const [loading, setLoading] = useState(!propQuestions);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [result, setResult] = useState<QuizSubmitResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   React.useEffect(() => {
-    const fetchQuiz = async () => {
-      try {
-        const data = await quizService.getQuiz(topic);
-        setQuestions(data.questions);
-      } catch (error) {
-        console.error('Failed to fetch quiz:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchQuiz();
-  }, [topic]);
+    if (propQuestions) {
+      setQuizQuestions(propQuestions);
+      setLoading(false);
+    } else if (topic) {
+      const fetchQuiz = async () => {
+        try {
+          const data = await quizService.getQuiz(topic);
+          setQuizQuestions(data.questions);
+        } catch (error) {
+          console.error('Failed to fetch quiz:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchQuiz();
+    }
+  }, [topic, propQuestions]);
 
   const handleOptionSelect = (optionIndex: number) => {
     const newAnswers = [...answers];
@@ -37,15 +43,15 @@ const QuizPanel: React.FC<QuizPanelProps> = ({ topic, onClose }) => {
   };
 
   const handleNext = async () => {
-    if (currentStep < questions.length - 1) {
+    if (currentStep < quizQuestions.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
       setSubmitting(true);
       try {
         const res = await quizService.submitQuiz({
-          topic,
+          topic: topic || 'embedded-quiz',
           answers,
-          questions: questions.map(q => ({ answerIndex: q.answerIndex })),
+          questions: quizQuestions.map(q => ({ answerIndex: q.answerIndex })),
         });
         setResult(res);
       } catch (error) {
@@ -111,8 +117,8 @@ const QuizPanel: React.FC<QuizPanelProps> = ({ topic, onClose }) => {
     );
   }
 
-  const currentQuestion = questions[currentStep];
-  const progress = ((currentStep + 1) / questions.length) * 100;
+  const currentQuestion = quizQuestions[currentStep];
+  const progress = ((currentStep + 1) / quizQuestions.length) * 100;
 
   return (
     <motion.div 
@@ -122,7 +128,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({ topic, onClose }) => {
     >
       <div className="flex justify-between items-center mb-6">
         <div>
-          <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Question {currentStep + 1} of {questions.length}</span>
+          <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Question {currentStep + 1} of {quizQuestions.length}</span>
           <h3 className="text-lg font-bold text-slate-900">Topic: {topic}</h3>
         </div>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
@@ -172,7 +178,7 @@ const QuizPanel: React.FC<QuizPanelProps> = ({ topic, onClose }) => {
           <Loader2 className="animate-spin" size={20} />
         ) : (
           <>
-            {currentStep === questions.length - 1 ? 'Submit Quiz' : 'Next Question'}
+            {currentStep === quizQuestions.length - 1 ? 'Submit Quiz' : 'Next Question'}
             <ArrowRight size={20} />
           </>
         )}

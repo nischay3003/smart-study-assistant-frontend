@@ -40,8 +40,10 @@ export interface Suggestion {
   topic: string;
 }
 
+export type AnswerItem = string | QuizQuestion | Record<string, unknown>;
+
 export interface AskResponse {
-  answer: string;
+  answer: AnswerItem[] | AnswerItem;
   confidence: 'low' | 'medium' | 'high';
   topic: string;
   weakTopic: boolean;

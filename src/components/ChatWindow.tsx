@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, BookOpen, Sparkles } from 'lucide-react';
-import { chatService, Message, AskResponse } from '../services/api';
+import { chatService, Message, AskResponse, QuizQuestion } from '../services/api';
 import MessageBubble from './MessageBubble';
 import SuggestionChip from './SuggestionChip';
 import QuizPanel from './QuizPanel';
@@ -9,6 +9,71 @@ import { motion, AnimatePresence } from 'motion/react';
 import FileUpload from './FileUpload';
 
 const ChatWindow: React.FC = () => {
+
+  const isQuizQuestion = (value: any): value is QuizQuestion => {
+    return (
+      value &&
+      typeof value === 'object' &&
+      typeof value.question === 'string' &&
+      Array.isArray(value.options) &&
+      typeof value.answerIndex === 'number'
+    );
+  };
+
+  const formatAskResponse = (response: AskResponse) => {
+    const answerItems = Array.isArray(response.answer) ? response.answer : [response.answer];
+    const textParts: string[] = [];
+    const quizItems: QuizQuestion[] = [];
+
+  
+
+   answerItems.forEach((item) => {
+
+      if (typeof item === 'string') {
+        console.log("Adding text item:", item);
+        textParts.push(item.trim());
+
+      } else if (isQuizQuestion(item)) {
+        // Direct quiz object (rare case)
+        quizItems.push(item);
+
+      } else if (item && typeof item === 'object') {
+        
+        // ✅ HANDLE NESTED QUESTIONS ARRAY
+        if (Array.isArray(item.questions)) {
+          item.questions.forEach((q: any) => {
+            if (isQuizQuestion(q)) {
+              quizItems.push(q);
+            }
+          });
+        } else {
+          // fallback
+          textParts.push(JSON.stringify(item, null, 2));
+        }
+      }
+    });
+    const text = textParts.filter(Boolean).join('\n\n').trim();
+    let quizMarkdown = '';
+
+
+    if (quizItems.length > 0) {
+      quizMarkdown = quizItems
+        .map((q, idx) => {
+          const optionsText = q.options
+            .map((option, optionIndex) => `- ${String.fromCharCode(65 + optionIndex)}. ${option}`)
+            .join('\n');
+
+          const answerLabel = q.options[q.answerIndex]
+            ? `${String.fromCharCode(65 + q.answerIndex)}. ${q.options[q.answerIndex]}`
+            : 'N/A';
+
+          return `### Quiz Question ${idx + 1}\n**${q.question}**\n\n${optionsText}\n\n**Answer**: ${answerLabel}`;
+        })
+        .join('\n\n---\n\n');
+    }
+
+    return { text, quizMarkdown, quizItems };
+  };
 
 
   const newChat = () => {
@@ -19,6 +84,10 @@ const ChatWindow: React.FC = () => {
   setMessages([
     { role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }
   ]);
+
+  setLastResponse(null);
+  setActiveQuizTopic(null);
+  setEmbeddedQuizQuestions(null);
 
   };
 
@@ -40,6 +109,7 @@ const ChatWindow: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [lastResponse, setLastResponse] = useState<AskResponse | null>(null);
   const [activeQuizTopic, setActiveQuizTopic] = useState<string | null>(null);
+  const [embeddedQuizQuestions, setEmbeddedQuizQuestions] = useState<QuizQuestion[] | null>(null);
   
 
   
@@ -63,13 +133,29 @@ const ChatWindow: React.FC = () => {
     try {
       const history = messages.slice(-10); // Keep last 10 messages for context
       const response = await chatService.ask(input, history);
-      
-      setMessages(prev => [...prev, { role: 'assistant', content: response.answer }]);
+      console.error("Response from API:", response);
+
+      const { text, quizMarkdown, quizItems } = formatAskResponse(response);
+    
+      setMessages(prev => {
+        const next = [...prev];
+        if (text) next.push({ role: 'assistant', content: text });
+        if (quizMarkdown) next.push({ role: 'assistant', content: quizMarkdown });
+        if (!text && !quizMarkdown) {
+          next.push({ role: 'assistant', content: "Sorry, I couldn't parse a valid answer from the API response." });
+        }
+        return next;
+      });
+
+      if (quizItems.length > 0) {
+        setEmbeddedQuizQuestions(quizItems);
+        setActiveQuizTopic(response.topic);
+      }
+
       console.log("Received response:", response);
-        setLastResponse(response);
-      
-        console.log("Last Response", lastResponse);
-      
+      setLastResponse(response);
+      console.log("Last Response", lastResponse);
+
     } catch (error) {
       console.error('Chat error:', error);
       setMessages(prev => [...prev, { 
@@ -142,7 +228,7 @@ const ChatWindow: React.FC = () => {
               <div className="w-10 h-10 rounded-full bg-slate-200"></div>
               <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-2">
                 <Loader2 className="animate-spin text-slate-400" size={16} />
-                <span className="text-sm text-slate-400 font-medium">Thinking...</span>
+                <span className="text-sm text   -slate-400 font-medium">Thinking...</span>
               </div>
             </div>
           )}
@@ -167,7 +253,8 @@ const ChatWindow: React.FC = () => {
               <div className="w-full max-w-2xl">
                 <QuizPanel 
                   topic={activeQuizTopic} 
-                  onClose={() => setActiveQuizTopic(null)} 
+                  questions={embeddedQuizQuestions}
+                  onClose={() => { setActiveQuizTopic(null); setEmbeddedQuizQuestions(null); }} 
                 />
               </div>
             </motion.div>

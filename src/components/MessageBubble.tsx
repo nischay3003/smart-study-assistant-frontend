@@ -14,7 +14,7 @@ interface MessageBubbleProps {
   confidence?: 'low' | 'medium' | 'high';
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, confidence }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({role, content, confidence}) => {
   const isUser = role === 'user';
 
   return (
@@ -59,7 +59,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ role, content, confidence
         )}
 
         <div className="prose prose-sm max-w-none prose-slate">
-          <ReactMarkdown>{content}</ReactMarkdown>
+          <ReactMarkdown>{typeof content === "string" ? content : String(content)}</ReactMarkdown>
         </div>
       </div>
     </div>
