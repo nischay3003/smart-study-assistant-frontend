@@ -5,6 +5,7 @@ import MessageBubble from './MessageBubble';
 import SuggestionChip from './SuggestionChip';
 import QuizPanel from './QuizPanel';
 import { motion, AnimatePresence } from 'motion/react';
+import VoiceInput from './RecordBtn';
 
 import FileUpload from './FileUpload';
 
@@ -178,6 +179,40 @@ const ChatWindow: React.FC = () => {
     setActiveQuizTopic(topic);
   };
 
+let mediaRecorder;
+let audioChunks = [];
+
+const startRecording = async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+  mediaRecorder = new MediaRecorder(stream);
+
+  mediaRecorder.ondataavailable = (event) => {
+    audioChunks.push(event.data);
+  };
+
+  mediaRecorder.onstop = async () => {
+    const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+
+    const formData = new FormData();
+    formData.append("file", audioBlob);
+
+    const res = await fetch("/speech-to-text", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+
+      setInput(data.text); // fill input
+    };
+
+    mediaRecorder.start();
+  };
+  const stopRecording = () => {
+  mediaRecorder.stop();
+  };
+
   return (
     <div className="flex flex-col h-screen max-w-4xl mx-auto bg-slate-50 shadow-2xl overflow-hidden border-x border-slate-200">
       {/* Header */}
@@ -279,6 +314,10 @@ const ChatWindow: React.FC = () => {
                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Press Enter</span>
             </div>
           </div>
+          <VoiceInput 
+            setQuestion={setInput} 
+            handleSubmit={handleSend} 
+          />
           <button
             disabled={!input.trim() || isLoading}
             onClick={handleSend}
@@ -288,7 +327,7 @@ const ChatWindow: React.FC = () => {
           </button>
         </div>
         <p className="text-center text-[10px] text-slate-400 mt-4 font-medium uppercase tracking-widest">
-          AI Smart Study Assistant • Powered by Gemini
+          • AI Smart Study Assistant • 
         </p>
       </footer>
     </div>
