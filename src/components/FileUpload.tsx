@@ -40,6 +40,7 @@ const FileUpload: React.FC = () => {
   };
 
   return (
+    
     <div className="relative">
       <input
         type="file"
@@ -48,17 +49,12 @@ const FileUpload: React.FC = () => {
         accept=".pdf"
         className="hidden"
       />
-      {fileName && (
-        <div className="mb-2 flex items-center gap-2">
-          <FileText size={16} className="text-indigo-500" />
-          <span className="text-xs font-medium text-slate-700 truncate">{fileName}</span>
-        </div>
-      )}
+      
       
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
-        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
+        className={`h-10 flex items-center mt-6 gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
           status === 'success' 
             ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
             : status === 'error'
@@ -78,8 +74,9 @@ const FileUpload: React.FC = () => {
         <span className="hidden sm:inline">
           {isUploading ? 'Ingesting...' : status === 'success' ? 'Ingested!' : status === 'error' ? 'Failed' : 'Add Notes'}
         </span>
+        
       </button>
-
+      
       <AnimatePresence>
         {fileName && isUploading && (
           <motion.div
@@ -103,6 +100,19 @@ const FileUpload: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+    
+
+      {fileName && status === 'success' ? (
+      <div className="mt-2 flex items-center gap-2 text-xs text-slate-600 max-w-[180px] truncate">
+        <FileText size={14} className="text-indigo-500" />
+        {fileName}
+      </div>
+        ) : (
+      <div className="mt-2 text-xs text-slate-400">
+        No file uploaded
+      </div>
+      )}
+
     </div>
   );
 };

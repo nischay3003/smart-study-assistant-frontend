@@ -216,7 +216,7 @@ const startRecording = async () => {
   return (
     <div className="flex flex-col h-screen max-w-4xl mx-auto bg-slate-50 shadow-2xl overflow-hidden border-x border-slate-200">
       {/* Header */}
-      <header className="bg-white border-bottom border-slate-200 px-6 py-4 flex items-center justify-between z-10">
+      <header className="bg-white border-bottom border-slate-200 px-6 py-6 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
             <BookOpen size={24} />
@@ -229,18 +229,22 @@ const startRecording = async () => {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-            <button
-              onClick={newChat}
-              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors"
-            >
-              New Chat
-            </button>
-           <FileUpload />
-           <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-             <Sparkles size={20} />
-           </button>
+        <div className="flex items-center gap-3 h-full">
+        <button
+          onClick={newChat}
+          className="h-10 px-4 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors flex items-center"
+        >
+          New Chat
+        </button>
+
+        <div className="flex items-center h-10">
+          <FileUpload />
         </div>
+
+        <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+          <Sparkles size={20} />
+        </button>
+      </div>
       </header>
 
       {/* Main Content */}
@@ -299,7 +303,7 @@ const startRecording = async () => {
 
       {/* Input Area */}
       <footer className="bg-white p-6 border-t border-slate-200">
-        <div className="relative flex items-end gap-3">
+        <div className="relative flex items-center gap-3 ">
           <div className="flex-1 relative">
             <textarea
               rows={1}
@@ -313,6 +317,7 @@ const startRecording = async () => {
             <div className="absolute right-3 bottom-3 flex items-center gap-2">
                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest hidden sm:block">Press Enter</span>
             </div>
+            
           </div>
           <VoiceInput 
             setQuestion={setInput} 
@@ -325,6 +330,7 @@ const startRecording = async () => {
           >
             {isLoading ? <Loader2 className="animate-spin" size={24} /> : <Send size={24} />}
           </button>
+          
         </div>
         <p className="text-center text-[10px] text-slate-400 mt-4 font-medium uppercase tracking-widest">
           • AI Smart Study Assistant • 

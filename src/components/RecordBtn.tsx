@@ -77,25 +77,15 @@ export default function VoiceInput({ setQuestion, handleSubmit }) {
   return (
     <button
   onClick={recording ? stopRecording : startRecording}
-  style={{
-    width: "50px",
-    height: "50px",
-    borderRadius: "50%",
-    border: "none",
-    background: recording ? "#ff4d4f" : "#f1f1f1",
-    color: recording ? "white" : "#333",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    animation: recording ? "pulse 1.2s infinite" : "none",
-    justifyContent: "center",
-    transition: "all 0.3s ease",
-    boxShadow: recording
-      ? "0 0 10px rgba(255, 77, 79, 0.6)"
-      : "0 2px 6px rgba(0,0,0,0.1)",
-  }}
+  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all
+    ${
+      recording
+        ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-200'
+        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+    }
+  `}
 >
-  <FaMicrophone size={20} />
-</button>
+  <FaMicrophone size={18} />
+  </button>
   );
 }
