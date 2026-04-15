@@ -32,6 +32,9 @@ api.interceptors.request.use((config) => {
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
+  _id?: string;
+  timestamp?:Date;
+
 }
 
 export interface Suggestion {
@@ -76,16 +79,40 @@ export interface IngestResponse {
   message: string;
 }
 
+export interface ChatMessages {
+  messages: Message[];
+
+}
+
 export const chatService = {
   /**
    * CHAT API INTEGRATION
    * Endpoint: POST /api/ask
    */
-  ask: async (question: string, chatHistory: Message[]): Promise<AskResponse> => {
+  ask: async (question: string, chatHistory: Message[], chatId: string | null,userId: string): Promise<AskResponse> => {
     const response = await api.post<AskResponse>('/api/ask', { // <--- UPDATE ENDPOINT PATH IF NEEDED
       question,
       chat_history: chatHistory,
+      userId,
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        "x-chat-id":chatId
+      },
+      
     });
+    return response.data;
+  },
+};
+
+export const chatHistoryService = {
+  /**
+   * CHAT HISTORY API INTEGRATION
+   * Endpoint: GET /api/chat/history/{$chatId}
+   */
+  getHistory: async (chatId: string): Promise<ChatMessages> => {
+    const response = await api.get<ChatMessages>(`/api/chat/history/${chatId}`); // <--- UPDATE ENDPOINT PATH IF NEEDED
     return response.data;
   },
 };
@@ -115,7 +142,7 @@ export const quizService = {
    * Endpoint: POST /api/quiz
    */
   getQuiz: async (topic: string, difficulty: string = 'easy'): Promise<QuizResponse> => {
-    const response = await api.post<QuizResponse>('/api/quiz', { // <--- UPDATE ENDPOINT PATH IF NEEDED
+    const response = await api.post<QuizResponse>('/api/quiz/generate', { // <--- UPDATE ENDPOINT PATH IF NEEDED
       topic,
       difficulty,
     });

@@ -1,15 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, BookOpen, Sparkles } from 'lucide-react';
-import { chatService, Message, AskResponse, QuizQuestion } from '../services/api';
+import { chatService, Message, AskResponse, QuizQuestion ,chatHistoryService } from '../services/api';
 import MessageBubble from './MessageBubble';
-import SuggestionChip from './SuggestionChip';
+import SuggestionChip from './SuggestionChip';chatHistoryService
 import QuizPanel from './QuizPanel';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, m } from 'motion/react';
 import VoiceInput from './RecordBtn';
+
 
 import FileUpload from './FileUpload';
 
 const ChatWindow: React.FC = () => {
+  
 
   const isQuizQuestion = (value: any): value is QuizQuestion => {
     return (
@@ -75,12 +77,38 @@ const ChatWindow: React.FC = () => {
 
     return { text, quizMarkdown, quizItems };
   };
+  const getUserId = () => {
+  let userId = localStorage.getItem("userId");
+
+  if (!userId) {
+    userId = Math.random().toString(36).substring(2);
+    localStorage.setItem("userId", userId);
+  }
+
+  return userId;
+};
+
+const userId = getUserId();
+const [chatId, setChatId] = useState(
+  localStorage.getItem("chatId") || null
+);
 
 
-  const newChat = () => {
+  const newChat = async() => {
 
-  const newId = crypto.randomUUID();
-  sessionStorage.setItem("sessionId", newId);
+  const res = await fetch("http://localhost:5000/chat/create", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ userId }),
+  });
+  const data = await res.json();
+
+  setChatId(data.chatId);
+  localStorage.setItem("chatId", data.chatId);
+
+ 
 
   setMessages([
     { role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }
@@ -91,28 +119,49 @@ const ChatWindow: React.FC = () => {
   setEmbeddedQuizQuestions(null);
 
   };
+  const loadChat = async (id) => {
+  setChatId(id);
+  localStorage.setItem("chatId", id);
+
+  const res = await fetch(`http://localhost:3000/chat/${id}`);
+  const data = await res.json();
+
+  setMessages(data.messages || []);
+};
 
   
-  useEffect(() => {
+  
 
-  if (!sessionStorage.getItem("sessionId")) {
-    const id = crypto.randomUUID();
-    sessionStorage.setItem("sessionId", id);
-  }
- 
-
-  }, []);
-
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [lastResponse, setLastResponse] = useState<AskResponse | null>(null);
   const [activeQuizTopic, setActiveQuizTopic] = useState<string | null>(null);
   const [embeddedQuizQuestions, setEmbeddedQuizQuestions] = useState<QuizQuestion[] | null>(null);
-  
+  useEffect(() => {
+  const loadInitialChat = async () => {
+    if (!chatId) return;
 
+    try {
+      const data = await chatHistoryService.getHistory(chatId);
+      
+
+      if (data.messages?.length > 0) {
+        setMessages(data.messages);
+      } else {
+        setMessages([
+          { role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }
+        ]);
+      }
+
+    } catch (err) {
+      console.error("Failed to load chat:", err);
+    }
+  };
+
+  loadInitialChat();
+}, [chatId]);
+  
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -124,7 +173,21 @@ const ChatWindow: React.FC = () => {
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
-
+    let currentChatId = chatId;
+    if (!currentChatId) {
+      // Create new chat session if it doesn't exist
+      const res = await fetch("http://localhost:5000/chat/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      currentChatId = data.chatId;
+      setChatId(currentChatId);
+      localStorage.setItem("chatId", currentChatId);
+    }
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
@@ -133,7 +196,7 @@ const ChatWindow: React.FC = () => {
 
     try {
       const history = messages.slice(-10); // Keep last 10 messages for context
-      const response = await chatService.ask(input, history);
+      const response = await chatService.ask(input, history,currentChatId,userId);
       console.error("Response from API:", response);
 
       const { text, quizMarkdown, quizItems } = formatAskResponse(response);
@@ -184,7 +247,7 @@ let audioChunks = [];
 
 const startRecording = async () => {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
+  audioChunks = [];
   mediaRecorder = new MediaRecorder(stream);
 
   mediaRecorder.ondataavailable = (event) => {
@@ -197,7 +260,7 @@ const startRecording = async () => {
     const formData = new FormData();
     formData.append("file", audioBlob);
 
-    const res = await fetch("/speech-to-text", {
+    const res = await fetch("http://localhost:8000/speech-to-text", {
       method: "POST",
       body: formData,
     });
@@ -303,7 +366,7 @@ const startRecording = async () => {
 
       {/* Input Area */}
       <footer className="bg-white p-6 border-t border-slate-200">
-        <div className="relative flex items-center gap-3 ">
+        <div className="relative flex items-center gap-3 items-center">
           <div className="flex-1 relative">
             <textarea
               rows={1}
