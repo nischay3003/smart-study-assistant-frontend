@@ -2,8 +2,14 @@ import React, { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle2, XCircle, Loader2, Plus } from 'lucide-react';
 import { ingestService } from '../services/api';
 import { motion, AnimatePresence } from 'motion/react';
+type FileUploadProps = {
+ 
+  onUploadSuccess?: () => void | Promise<void>;
+  chatId:string
+  
+};
 
-const FileUpload: React.FC = () => {
+const FileUpload: React.FC<FileUploadProps> = ({chatId,onUploadSuccess}) => {
   const [isUploading, setIsUploading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [fileName, setFileName] = useState<string | null>(null);
@@ -12,23 +18,25 @@ const FileUpload: React.FC = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+    
     if (file.type !== 'application/pdf') {
       alert('Please upload a PDF file.');
       return;
     }
-
+    
+    console.log("Chat id in File Upload:",chatId);
     setFileName(file.name);
     setIsUploading(true);
     setStatus('idle');
 
     try {
-      await ingestService.uploadPdf(file);
+      await ingestService.uploadPdf(file,chatId);
       setStatus('success');
-      // setTimeout(() => {
-      //   setStatus('idle');
-      //   setFileName(null);
-      // }, 3000);
+      onUploadSuccess?.();
+      setTimeout(() => {
+        setStatus('idle');
+        setFileName(null);
+      }, 2000);
     } catch (error) {
       console.error('Upload failed:', error);
       setStatus('error');
@@ -102,7 +110,7 @@ const FileUpload: React.FC = () => {
       </AnimatePresence>
     
 
-      {fileName && status === 'success' ? (
+      {/* {fileName && status === 'success' ? (
       <div className="mt-2 flex items-center gap-2 text-xs text-slate-600 max-w-[180px] truncate">
         <FileText size={14} className="text-indigo-500" />
         {fileName}
@@ -111,7 +119,7 @@ const FileUpload: React.FC = () => {
       <div className="mt-2 text-xs text-slate-400">
         No file uploaded
       </div>
-      )}
+      )} */}
 
     </div>
   );

@@ -1,14 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, BookOpen, Sparkles } from 'lucide-react';
-import { chatService, Message, AskResponse, QuizQuestion ,chatHistoryService } from '../services/api';
+import { chatService, chatSessionService, Message, AskResponse, QuizQuestion, chatHistoryService, ChatDocument } from '../services/api';
 import MessageBubble from './MessageBubble';
-import SuggestionChip from './SuggestionChip';chatHistoryService
+import SuggestionChip from './SuggestionChip';
 import QuizPanel from './QuizPanel';
 import { motion, AnimatePresence, m } from 'motion/react';
 import VoiceInput from './RecordBtn';
-
+import LogoutButton from './LogoutButton';
+import Sidebar from './Sidebar';
 
 import FileUpload from './FileUpload';
+
+
+
 
 const ChatWindow: React.FC = () => {
   
@@ -77,57 +81,62 @@ const ChatWindow: React.FC = () => {
 
     return { text, quizMarkdown, quizItems };
   };
-  const getUserId = () => {
-  let userId = localStorage.getItem("userId");
+    const[chats,setChats]=useState([]);
+    const [chatId, setChatId] = useState<string | null>(sessionStorage.getItem("chatId"));
+    const chatIdRef = useRef<string | null>(sessionStorage.getItem("chatId")); // ✅ add this
+    
 
-  if (!userId) {
-    userId = Math.random().toString(36).substring(2);
-    localStorage.setItem("userId", userId);
-  }
+      useEffect(() => {
+      chatIdRef.current = chatId;
+    }, [chatId]);
 
-  return userId;
-};
+    useEffect(()=>{
+      const loadChats=async ()=>{
+        const token=sessionStorage.getItem("token");
 
-const userId = getUserId();
-const [chatId, setChatId] = useState(
-  localStorage.getItem("chatId") || null
-);
+        const res=await chatSessionService.findChats(token);
+        
+        
+        setChats(res);
+      };
+
+      loadChats();
+    },[])
 
 
-  const newChat = async() => {
+  const newChat = async () => {
+    const data = await chatSessionService.createChat();
+    const chatId = data.chatId;
 
-  const res = await fetch("http://localhost:5000/chat/create", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ userId }),
-  });
-  const data = await res.json();
+    console.log('New chat created with ID:', chatId);
+    chatIdRef.current = chatId;
+    setChatId(chatId);
+    sessionStorage.setItem('chatId', chatId);
+    setLastResponse(null);
+    setActiveQuizTopic(null);
+    setEmbeddedQuizQuestions(null);
+    setDocuments([]);  // ✅ add this
 
-  setChatId(data.chatId);
-  localStorage.setItem("chatId", data.chatId);
 
  
 
   setMessages([
     { role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }
   ]);
-
+  setChats(prev => [{chatId, title: "New Chat"}, ...prev]);
   setLastResponse(null);
   setActiveQuizTopic(null);
   setEmbeddedQuizQuestions(null);
 
   };
-  const loadChat = async (id) => {
-  setChatId(id);
-  localStorage.setItem("chatId", id);
+  const loadChat = async (id: string) => {
+    setChatId(id);
+    sessionStorage.setItem('chatId', id);
+    setDocuments([]);
+    // const data = await chatSessionService.loadChat(id);
+    // setMessages(data.messages || [{ role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }]);
 
-  const res = await fetch(`http://localhost:3000/chat/${id}`);
-  const data = await res.json();
-
-  setMessages(data.messages || []);
-};
+  };
 
   
   
@@ -136,30 +145,42 @@ const [chatId, setChatId] = useState(
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [lastResponse, setLastResponse] = useState<AskResponse | null>(null);
+  const [documents, setDocuments] = useState<ChatDocument[]>([]);
   const [activeQuizTopic, setActiveQuizTopic] = useState<string | null>(null);
   const [embeddedQuizQuestions, setEmbeddedQuizQuestions] = useState<QuizQuestion[] | null>(null);
-  useEffect(() => {
-  const loadInitialChat = async () => {
+  const loadInitialChat = async (chatId) => {
     if (!chatId) return;
 
     try {
       const data = await chatHistoryService.getHistory(chatId);
       
 
-      if (data.messages?.length > 0) {
-        setMessages(data.messages);
-      } else {
-        setMessages([
-          { role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }
-        ]);
-      }
+      const greeting : Message={
+      role: 'assistant',
+      content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?"
+    };
+
+    if (data.messages?.length > 0) {
+      setMessages([greeting, ...data.messages]);
+    } else {
+      setMessages([greeting]);
+    }
+
+    
+      await setDocuments(data.documents ?? []);
+      console.log("Documents set",documents);
+    
 
     } catch (err) {
       console.error("Failed to load chat:", err);
     }
+    
+    
   };
 
-  loadInitialChat();
+  useEffect(() => {
+  
+  loadInitialChat(chatId);
 }, [chatId]);
   
   
@@ -170,24 +191,30 @@ const [chatId, setChatId] = useState(
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isLoading]);
-
+  
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
-    let currentChatId = chatId;
+    let currentChatId = chatIdRef.current; // ✅ use ref to get latest chatId
+
     if (!currentChatId) {
-      // Create new chat session if it doesn't exist
-      const res = await fetch("http://localhost:5000/chat/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId }),
-      });
-      const data = await res.json();
+      const data = await chatSessionService.createChat();
       currentChatId = data.chatId;
+      chatIdRef.current = currentChatId;
       setChatId(currentChatId);
-      localStorage.setItem("chatId", currentChatId);
+      sessionStorage.setItem('chatId', currentChatId);
+      
     }
+    if (messages.length === 1) {
+      
+    setChats((prev) =>
+      prev.map((chat) =>
+        chat.chatId === chatId
+          ? { ...chat, title: input.slice(0, 40) }
+          : chat
+      )
+    );
+    }
+    
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
@@ -195,8 +222,8 @@ const [chatId, setChatId] = useState(
     setLastResponse(null);
 
     try {
-      const history = messages.slice(-10); // Keep last 10 messages for context
-      const response = await chatService.ask(input, history,currentChatId,userId);
+      const history = [...messages, userMessage].slice(-10); // Keep last 10 messages for context
+      const response = await chatService.ask(input, history,currentChatId);
       console.error("Response from API:", response);
 
       const { text, quizMarkdown, quizItems } = formatAskResponse(response);
@@ -216,9 +243,9 @@ const [chatId, setChatId] = useState(
         setActiveQuizTopic(response.topic);
       }
 
-      console.log("Received response:", response);
+      
       setLastResponse(response);
-      console.log("Last Response", lastResponse);
+      
 
     } catch (error) {
       console.error('Chat error:', error);
@@ -241,43 +268,18 @@ const [chatId, setChatId] = useState(
   const startQuiz = (topic: string) => {
     setActiveQuizTopic(topic);
   };
-
-let mediaRecorder;
-let audioChunks = [];
-
-const startRecording = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  audioChunks = [];
-  mediaRecorder = new MediaRecorder(stream);
-
-  mediaRecorder.ondataavailable = (event) => {
-    audioChunks.push(event.data);
-  };
-
-  mediaRecorder.onstop = async () => {
-    const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-
-    const formData = new FormData();
-    formData.append("file", audioBlob);
-
-    const res = await fetch("http://localhost:8000/speech-to-text", {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await res.json();
-
-      setInput(data.text); // fill input
-    };
-
-    mediaRecorder.start();
-  };
-  const stopRecording = () => {
-  mediaRecorder.stop();
-  };
-
+  
+  
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto bg-slate-50 shadow-2xl overflow-hidden border-x border-slate-200">
+    <div className="flex h-screen bg-slate-100">
+       <Sidebar
+      chats={chats}
+      currentChatId={chatId}
+      onSelectChat={loadChat}
+      onNewChat={newChat}
+      documents={documents}
+    />
+    <div className="flex flex-col h-screen w-full max-w-4xl mx-auto bg-slate-50 shadow-2xl overflow-hidden border-x border-slate-200 width">
       {/* Header */}
       <header className="bg-white border-bottom border-slate-200 px-6 py-6 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
@@ -293,22 +295,28 @@ const startRecording = async () => {
           </div>
         </div>
         <div className="flex items-center gap-3 h-full">
-        <button
+        {/* <button
           onClick={newChat}
           className="h-10 px-4 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors flex items-center"
         >
           New Chat
-        </button>
+        </button> */}
+                  
+
+          
 
         <div className="flex items-center h-10">
-          <FileUpload />
+          <FileUpload chatId={chatId} onUploadSuccess={()=>{loadInitialChat(chatId)}}/>
         </div>
 
         <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
           <Sparkles size={20} />
         </button>
+
+        {/* <LogoutButton /> */}
       </div>
       </header>
+      
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative flex flex-col">
@@ -399,6 +407,7 @@ const startRecording = async () => {
           • AI Smart Study Assistant • 
         </p>
       </footer>
+    </div>
     </div>
   );
 };
