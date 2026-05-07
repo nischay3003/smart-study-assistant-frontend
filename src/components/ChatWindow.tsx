@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, BookOpen, Sparkles } from 'lucide-react';
-import { chatService, chatSessionService, Message, AskResponse, QuizQuestion, chatHistoryService, ChatDocument } from '../services/api';
+import { chatService, chatSessionService, Message, AskResponse, QuizQuestion, chatHistoryService, ChatDocument, adminService } from '../services/api';
 import MessageBubble from './MessageBubble';
 import SuggestionChip from './SuggestionChip';
 import QuizPanel from './QuizPanel';
@@ -8,7 +8,7 @@ import { motion, AnimatePresence, m } from 'motion/react';
 import VoiceInput from './RecordBtn';
 import LogoutButton from './LogoutButton';
 import Sidebar, { Chat } from './Sidebar';
-
+import GlobalKnowledgeModal from './GlobalKnowledgeModal';
 import FileUpload from './FileUpload';
 
 
@@ -81,6 +81,7 @@ const ChatWindow: React.FC = () => {
 
     return { text, quizMarkdown, quizItems };
   };
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   const [chats, setChats] = useState<Chat[]>([]);
   const [chatId, setChatId] = useState<string | null>(sessionStorage.getItem("chatId"));
@@ -90,7 +91,8 @@ const ChatWindow: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [lastResponse, setLastResponse] = useState<AskResponse | null>(null);
   const [queryDuration, setQueryDuration] = useState<number | null>(null);
-  const [documents, setDocuments] = useState<ChatDocument[]>([]);
+  const [chatDocuments, setChatDocuments] = useState<ChatDocument[]>([]);
+  const [globalDocuments, setGlobalDocuments] = useState<ChatDocument[]>([]);
   const [activeQuizTopic, setActiveQuizTopic] = useState<string | null>(null);
   const [embeddedQuizQuestions, setEmbeddedQuizQuestions] = useState<QuizQuestion[] | undefined>(undefined);
 
@@ -98,15 +100,31 @@ const ChatWindow: React.FC = () => {
     chatIdRef.current = chatId;
   }, [chatId]);
 
+  const loadGlobalDocuments = async () => {
+    try {
+      const docs = await adminService.getGlobalDocuments();
+      console.log('Global documents loaded:', docs);
+      setGlobalDocuments(docs);
+    } catch (error) {
+      console.error('Failed to load global documents:', error);
+    }
+  };
+
   useEffect(() => {
     const loadChats = async () => {
       const token = sessionStorage.getItem("token");
 
-      const res = await chatSessionService.findChats(token);
-      setChats(res);
+      if (token) {
+        const res = await chatSessionService.findChats(token);
+        setChats(res);
+      }
     };
 
     loadChats();
+  }, []);
+
+  useEffect(() => {
+    loadGlobalDocuments();
   }, []);
 
   const newChat = async () => {
@@ -120,7 +138,7 @@ const ChatWindow: React.FC = () => {
     setLastResponse(null);
     setActiveQuizTopic(null);
     setEmbeddedQuizQuestions(undefined);
-    setDocuments([]);
+    setChatDocuments([]);
 
     setMessages([
       { role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }
@@ -131,7 +149,8 @@ const ChatWindow: React.FC = () => {
   const loadChat = async (id: string) => {
     setChatId(id);
     sessionStorage.setItem('chatId', id);
-    setDocuments([]);
+    setChatDocuments([]);
+    setGlobalDocuments([]);
     // const data = await chatSessionService.loadChat(id);
     // setMessages(data.messages || [{ role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }]);
   };
@@ -141,7 +160,7 @@ const ChatWindow: React.FC = () => {
 
     try {
       const data = await chatHistoryService.getHistory(chatId);
-
+      
       const greeting: Message = {
         role: 'assistant',
         content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?"
@@ -153,8 +172,8 @@ const ChatWindow: React.FC = () => {
         setMessages([greeting]);
       }
 
-      setDocuments(data.documents ?? []);
-      console.log("Documents set", data.documents ?? []);
+      setChatDocuments(data.documents ?? []);
+      console.log("Chat Documents set", data.documents ?? []);
 
     } catch (err) {
       console.error("Failed to load chat:", err);
@@ -262,9 +281,18 @@ const ChatWindow: React.FC = () => {
       currentChatId={chatId}
       onSelectChat={loadChat}
       onNewChat={newChat}
-      documents={documents}
-      setDocuments={setDocuments}
-    />
+      chatDocuments={chatDocuments}
+      setChatDocuments={setChatDocuments}
+      globalDocuments={globalDocuments}
+      setGlobalDocuments={setGlobalDocuments}
+      onOpenAdminIngest={() => setIsAdminModalOpen(true)}
+        />
+
+        <GlobalKnowledgeModal 
+        isOpen={isAdminModalOpen} 
+        onClose={() => setIsAdminModalOpen(false)} 
+        onSuccess={loadGlobalDocuments}
+      />
     <div className="flex flex-col h-screen w-full max-w-4xl mx-auto bg-slate-50 shadow-2xl overflow-hidden border-x border-slate-200 width">
       {/* Header */}
       <header className="bg-white border-bottom border-slate-200 px-6 py-6 flex items-center justify-between z-10">

@@ -86,6 +86,9 @@ export interface ChatDocument{
   uploadedAt:Date;
   fileHash:string;
 }
+export interface GlobalChatDocument{
+  documents:ChatDocument[];
+}
 
 export interface IngestResponse {
   status: string;
@@ -178,6 +181,39 @@ export const chatSessionService = {
   }
   
   
+};
+
+export const adminService = {
+  /**
+   * ADMIN GLOBAL KNOWLEDGE INGESTION
+   * Endpoint: POST /document/ingest/global
+   * Payload: FormData with 'title', 'category', 'description', 'file' or 'rawText'
+   */
+  ingestGlobalKnowledge: async (data: {
+    title: string;
+    category: string;
+    description?: string;
+    file?: File;
+    rawText?: string;
+  }): Promise<IngestResponse> => {
+    const formData = new FormData();
+    formData.append('title', data.title);
+    formData.append('category', data.category);
+    if (data.description) formData.append('description', data.description);
+    if (data.file) formData.append('file', data.file);
+    if (data.rawText) formData.append('rawText', data.rawText);
+
+    const response = await api.post<IngestResponse>('/document/ingest/global', formData, {
+      // headers: {
+      //   'Content-Type': 'multipart/form-data',
+      // },
+    });
+    return response.data;
+  },
+  getGlobalDocuments: async (): Promise<ChatDocument[]> => {
+    const response = await api.get<GlobalChatDocument>('/document/global');
+    return response.data.documents; // Assuming the API returns { documents: ChatDocument[] }
+  }
 };
 
 export const userService={

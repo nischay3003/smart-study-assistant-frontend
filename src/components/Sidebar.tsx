@@ -68,7 +68,7 @@ import { useState,useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2 } from "lucide-react";
 
-import { Plus, MessageSquare, History, Settings, LogOut, User } from "lucide-react";
+import { Plus, MessageSquare, History, Settings, LogOut, User, Database } from "lucide-react";
 
 export type Chat = {
   chatId: string;
@@ -87,8 +87,11 @@ type SidebarProps = {
   currentChatId: string | null;
   onSelectChat: (chatId: string) => void;
   onNewChat: () => void;
-  documents:Document[];
-  setDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
+  onOpenAdminIngest?: () => void;
+  chatDocuments:Document[];
+  setChatDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
+  globalDocuments: Document[];
+  setGlobalDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
 };
 import {userService} from "../services/api"
 type User = {
@@ -104,8 +107,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   currentChatId,
   onSelectChat,
   onNewChat,
-  documents,
-  setDocuments
+  chatDocuments,
+  setChatDocuments,
+  globalDocuments,
+  setGlobalDocuments,
+  onOpenAdminIngest
 }) => {
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(null);
@@ -113,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         sessionStorage.removeItem('token');
         navigate('/login');
     };
-    console.log("Documets:",documents);
+    console.log("Documets:",chatDocuments);
     const fetchUser=async()=>{
         const userRes=await userService.getUser();
         if(!userRes){
@@ -129,7 +135,44 @@ const Sidebar: React.FC<SidebarProps> = ({
     useEffect(()=>{
         fetchUser()
     },[]);
+    const deleteGlobalDocument = async (doc_id: string) => {
+      if (!doc_id) {
+        console.error("Invalid doc_id:", doc_id);
+        alert("Error: Invalid document ID!");
+        return;
+      }
 
+      const confirmed = window.confirm("Are you sure you want to delete this global document? This will remove it for all users.");
+      if (!confirmed) return;
+
+      try {
+        const token = sessionStorage.getItem("token");
+        console.log("Deleting global document with ID:", doc_id);
+        const res = await fetch(`http://localhost:5000/api/document/global/delete/${doc_id}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ doc_id }),
+          
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          setGlobalDocuments((prev) =>
+            prev.filter((doc) => doc.doc_id !== doc_id)
+          );
+        } else {
+          console.error(data.message);
+          alert("Failed to delete global document: " + data.message);
+        }
+      } catch (err) {
+        console.error("Delete failed", err);
+        alert("Delete failed. Please try again.");
+      }
+    }
     const deleteDocument = async (doc_id: string) => {
       if (!doc_id) {
         console.error("Invalid doc_id:", doc_id);
@@ -161,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         const data = await res.json();
 
         if (res.ok) {
-          setDocuments((prev) =>
+          setChatDocuments((prev) =>
             prev.filter((doc) => doc.doc_id !== doc_id)
           );
         } else {
@@ -180,11 +223,22 @@ const Sidebar: React.FC<SidebarProps> = ({
     <div className="w-80 bg-slate-50 border-r border-slate-200 flex flex-col h-screen shrink-0 relative transition-all duration-300">
       
       {/* App Header in Sidebar */}
-      <div className="p-5 flex items-center gap-3">
-        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-          <History size={18} />
+      <div className="p-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-100">
+            <History size={18} />
+          </div>
+          <span className="font-bold text-slate-800 tracking-tight">Study History</span>
         </div>
-        <span className="font-bold text-slate-800 tracking-tight">Study History</span>
+        {onOpenAdminIngest && (
+          <button 
+            onClick={onOpenAdminIngest}
+            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all active:scale-95 group"
+            title="Admin: Global Knowledge Ingestion"
+          >
+            <Database size={18} />
+          </button>
+        )}
       </div>
 
       {/* New Chat Button */}
@@ -242,8 +296,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         Uploaded Documents
 
         <div className="mt-1 space-y-1">
-          {documents?.length > 0 ? (
-            documents.map((doc: any) => (
+          {chatDocuments?.length > 0 ? (
+            chatDocuments.map((doc: any) => (
               <div
                 key={doc.doc_id}
                 className="flex items-center justify-between text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded group"
@@ -265,7 +319,34 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
         </div>
+         <div className="px-4 py-2 text-xs text-slate-400">
+        Global Documents
+
+        <div className="mt-1 space-y-1">
+          {globalDocuments?.length > 0 ? (
+            globalDocuments.map((doc: any) => (
+              <div
+                key={doc.doc_id}
+                className="flex items-center justify-between text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded group"
+              >
+                {/* File name */}
+                <span className="truncate">{doc.name}</span>
+                <button
+                  onClick={() => deleteGlobalDocument(doc.doc_id)}
+                  className="opacity-0 group-hover:opacity-100 transition text-red-500 hover:text-red-700 ml-2"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="text-xs text-slate-400">No documents</div>
+          )}
+        </div>
+        </div>
+      
       </div>
+      
 
       {/* Profile / Footer Section */}
       <div className="p-4 border-t border-slate-200 bg-white/50 space-y-2">
