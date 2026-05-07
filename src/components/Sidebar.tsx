@@ -78,6 +78,7 @@ export type Chat = {
 type Document={
     name:string;
   _id:string;
+  doc_id:string;
   uploadedAt:Date;
   fileHash:string;
 }
@@ -129,32 +130,49 @@ const Sidebar: React.FC<SidebarProps> = ({
         fetchUser()
     },[]);
 
-    const deleteDocument = async (fileHash:string) => {
-  const token = sessionStorage.getItem("token");
-  console.log(token);
-  const chatId = sessionStorage.getItem("chatId");
-
-  try {
-    await fetch(
-      `http://localhost:5000/api/doc/${fileHash}`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          ...(chatId ? { "x-chat-id": chatId } : {}),
-        }
+    const deleteDocument = async (doc_id: string) => {
+      if (!doc_id) {
+        console.error("Invalid doc_id:", doc_id);
+        alert("Error: Invalid document ID!");
+        return;
       }
-    );
 
-    // 🔥 update UI immediately
-    setDocuments((prev) =>
-      prev.filter((doc) => doc.fileHash !== fileHash)
-    );
+      const confirmed = window.confirm("Are you sure you want to delete this document?");
+      if (!confirmed) return;
 
-  } catch (err) {
-    console.error("Delete failed:", err);
-  }
-};
+      try {
+        const token = sessionStorage.getItem("token");
+        const chatId = sessionStorage.getItem("chatId");
+        if(!chatId){
+          return alert("No active chat session found. Please select a chat session and try again.");
+        }
+        console.log("Deleting document with ID:", doc_id, "Chat ID:", chatId);
+        const res = await fetch("http://localhost:5000/api/document/delete", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            ...(chatId ? { "x-chat-id": chatId } : {}),
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ doc_id }),
+          
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          setDocuments((prev) =>
+            prev.filter((doc) => doc.doc_id !== doc_id)
+          );
+        } else {
+          console.error(data.message);
+          alert("Failed to delete document: " + data.message);
+        }
+      } catch (err) {
+        console.error("Delete failed", err);
+        alert("Delete failed. Please try again.");
+      }
+    };
 
 
 
@@ -227,7 +245,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {documents?.length > 0 ? (
             documents.map((doc: any) => (
               <div
-                key={doc._id}
+                key={doc.doc_id}
                 className="flex items-center justify-between text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded group"
               >
                 {/* File name */}
@@ -235,7 +253,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                 {/* Delete button */}
                 <button
-                  onClick={() => deleteDocument(doc.fileHash)}
+                  onClick={() => deleteDocument(doc.doc_id)}
                   className="opacity-0 group-hover:opacity-100 transition text-red-500 hover:text-red-700 ml-2"
                 >
                   <Trash2 size={14} />

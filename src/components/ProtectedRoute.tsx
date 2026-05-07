@@ -6,9 +6,9 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const userId = sessionStorage.getItem('userId');
+  const token = sessionStorage.getItem('token');
 
-  if (!userId) {
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
 

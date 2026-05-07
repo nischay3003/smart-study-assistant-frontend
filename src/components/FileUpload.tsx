@@ -19,10 +19,16 @@ const FileUpload: React.FC<FileUploadProps> = ({chatId,onUploadSuccess}) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    if (file.type !== 'application/pdf') {
-      alert('Please upload a PDF file.');
-      return;
-    }
+    const allowedTypes = [
+        "application/pdf",
+        "text/plain",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        alert("Only PDF, TXT, and DOCX files are allowed.");
+        return;
+      }
     
     console.log("Chat id in File Upload:",chatId);
     setFileName(file.name);
@@ -30,7 +36,7 @@ const FileUpload: React.FC<FileUploadProps> = ({chatId,onUploadSuccess}) => {
     setStatus('idle');
 
     try {
-      await ingestService.uploadPdf(file,chatId);
+      await ingestService.uploadFile(file,chatId);
       setStatus('success');
       onUploadSuccess?.();
       setTimeout(() => {
@@ -54,7 +60,7 @@ const FileUpload: React.FC<FileUploadProps> = ({chatId,onUploadSuccess}) => {
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept=".pdf"
+        accept=".pdf, .txt, .docx"
         className="hidden"
       />
       

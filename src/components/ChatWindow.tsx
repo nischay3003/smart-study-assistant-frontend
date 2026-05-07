@@ -7,7 +7,7 @@ import QuizPanel from './QuizPanel';
 import { motion, AnimatePresence, m } from 'motion/react';
 import VoiceInput from './RecordBtn';
 import LogoutButton from './LogoutButton';
-import Sidebar from './Sidebar';
+import Sidebar, { Chat } from './Sidebar';
 
 import FileUpload from './FileUpload';
 
@@ -81,109 +81,90 @@ const ChatWindow: React.FC = () => {
 
     return { text, quizMarkdown, quizItems };
   };
-    const[chats,setChats]=useState([]);
-    const [chatId, setChatId] = useState<string | null>(sessionStorage.getItem("chatId"));
-    const chatIdRef = useRef<string | null>(sessionStorage.getItem("chatId")); // ✅ add this
-    
 
-      useEffect(() => {
-      chatIdRef.current = chatId;
-    }, [chatId]);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [chatId, setChatId] = useState<string | null>(sessionStorage.getItem("chatId"));
+  const chatIdRef = useRef<string | null>(sessionStorage.getItem("chatId"));
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastResponse, setLastResponse] = useState<AskResponse | null>(null);
+  const [queryDuration, setQueryDuration] = useState<number | null>(null);
+  const [documents, setDocuments] = useState<ChatDocument[]>([]);
+  const [activeQuizTopic, setActiveQuizTopic] = useState<string | null>(null);
+  const [embeddedQuizQuestions, setEmbeddedQuizQuestions] = useState<QuizQuestion[] | undefined>(undefined);
 
-    useEffect(()=>{
-      const loadChats=async ()=>{
-        const token=sessionStorage.getItem("token");
+  useEffect(() => {
+    chatIdRef.current = chatId;
+  }, [chatId]);
 
-        const res=await chatSessionService.findChats(token);
-        
-        
-        setChats(res);
-      };
+  useEffect(() => {
+    const loadChats = async () => {
+      const token = sessionStorage.getItem("token");
 
-      loadChats();
-    },[])
+      const res = await chatSessionService.findChats(token);
+      setChats(res);
+    };
 
+    loadChats();
+  }, []);
 
   const newChat = async () => {
     const data = await chatSessionService.createChat();
-    const chatId = data.chatId;
+    const newChatId = data.chatId;
 
-    console.log('New chat created with ID:', chatId);
-    chatIdRef.current = chatId;
-    setChatId(chatId);
-    sessionStorage.setItem('chatId', chatId);
+    console.log('New chat created with ID:', newChatId);
+    chatIdRef.current = newChatId;
+    setChatId(newChatId);
+    sessionStorage.setItem('chatId', newChatId);
     setLastResponse(null);
     setActiveQuizTopic(null);
-    setEmbeddedQuizQuestions(null);
-    setDocuments([]);  // ✅ add this
+    setEmbeddedQuizQuestions(undefined);
+    setDocuments([]);
 
-
- 
-
-  setMessages([
-    { role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }
-  ]);
-  setChats(prev => [{chatId, title: "New Chat"}, ...prev]);
-  setLastResponse(null);
-  setActiveQuizTopic(null);
-  setEmbeddedQuizQuestions(null);
-
+    setMessages([
+      { role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }
+    ]);
+    setChats(prev => [{ chatId: newChatId, title: "New Chat" }, ...prev]);
   };
+
   const loadChat = async (id: string) => {
     setChatId(id);
     sessionStorage.setItem('chatId', id);
     setDocuments([]);
     // const data = await chatSessionService.loadChat(id);
     // setMessages(data.messages || [{ role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }]);
-
   };
 
-  
-  
-
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastResponse, setLastResponse] = useState<AskResponse | null>(null);
-  const [documents, setDocuments] = useState<ChatDocument[]>([]);
-  const [activeQuizTopic, setActiveQuizTopic] = useState<string | null>(null);
-  const [embeddedQuizQuestions, setEmbeddedQuizQuestions] = useState<QuizQuestion[] | null>(null);
-  const loadInitialChat = async (chatId) => {
+  const loadInitialChat = async (chatId: string | null) => {
     if (!chatId) return;
 
     try {
       const data = await chatHistoryService.getHistory(chatId);
-      
 
-      const greeting : Message={
-      role: 'assistant',
-      content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?"
-    };
+      const greeting: Message = {
+        role: 'assistant',
+        content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?"
+      };
 
-    if (data.messages?.length > 0) {
-      setMessages([greeting, ...data.messages]);
-    } else {
-      setMessages([greeting]);
-    }
+      if (data.messages?.length > 0) {
+        setMessages([greeting, ...data.messages]);
+      } else {
+        setMessages([greeting]);
+      }
 
-    
-      await setDocuments(data.documents ?? []);
-      console.log("Documents set",documents);
-    
+      setDocuments(data.documents ?? []);
+      console.log("Documents set", data.documents ?? []);
 
     } catch (err) {
       console.error("Failed to load chat:", err);
     }
-    
-    
   };
 
   useEffect(() => {
-  
-  loadInitialChat(chatId);
-}, [chatId]);
-  
-  
+    loadInitialChat(chatId);
+  }, [chatId]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -220,13 +201,17 @@ const ChatWindow: React.FC = () => {
     setInput('');
     setIsLoading(true);
     setLastResponse(null);
+    setQueryDuration(null);
+    const requestStart = performance.now();
 
     try {
       const history = [...messages, userMessage].slice(-10); // Keep last 10 messages for context
-      const response = await chatService.ask(input, history,currentChatId);
+      const response = await chatService.ask(input, history, currentChatId);
+      const requestEnd = performance.now();
+      setQueryDuration((requestEnd - requestStart) / 1000);
       console.error("Response from API:", response);
 
-      const { text, quizMarkdown, quizItems } = formatAskResponse(response);
+          const { text, quizMarkdown, quizItems } = formatAskResponse(response);
     
       setMessages(prev => {
         const next = [...prev];
@@ -278,6 +263,7 @@ const ChatWindow: React.FC = () => {
       onSelectChat={loadChat}
       onNewChat={newChat}
       documents={documents}
+      setDocuments={setDocuments}
     />
     <div className="flex flex-col h-screen w-full max-w-4xl mx-auto bg-slate-50 shadow-2xl overflow-hidden border-x border-slate-200 width">
       {/* Header */}
@@ -287,7 +273,7 @@ const ChatWindow: React.FC = () => {
             <BookOpen size={24} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-slate-900 leading-tight">Study Assistant</h1>
+            <h1 className="text-lg font-bold text-slate-900 leading-tight">StudyGenie AI</h1>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
               <span className="text-xs text-slate-500 font-medium">Online & Ready</span>
@@ -306,7 +292,9 @@ const ChatWindow: React.FC = () => {
           
 
         <div className="flex items-center h-10">
-          <FileUpload chatId={chatId} onUploadSuccess={()=>{loadInitialChat(chatId)}}/>
+          {chatId ? (
+          <FileUpload chatId={chatId} onUploadSuccess={() => { loadInitialChat(chatId); }} />
+        ) : null}
         </div>
 
         <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
@@ -349,6 +337,12 @@ const ChatWindow: React.FC = () => {
               onClick={startQuiz}
             />
           )}
+
+          {queryDuration !== null && !isLoading && (
+            <div className="mt-3 text-right text-xs text-slate-500">
+              Response time: {queryDuration.toFixed(3)}s
+            </div>
+          )}
         </div>
 
         {/* Quiz Overlay */}
@@ -364,7 +358,7 @@ const ChatWindow: React.FC = () => {
                 <QuizPanel 
                   topic={activeQuizTopic} 
                   questions={embeddedQuizQuestions}
-                  onClose={() => { setActiveQuizTopic(null); setEmbeddedQuizQuestions(null); }} 
+                  onClose={() => { setActiveQuizTopic(null); setEmbeddedQuizQuestions(undefined); }} 
                 />
               </div>
             </motion.div>

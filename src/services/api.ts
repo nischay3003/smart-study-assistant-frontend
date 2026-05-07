@@ -82,6 +82,7 @@ export interface Chats {
 export interface ChatDocument{
   name:string;
   _id:string;
+  doc_id:string;
   uploadedAt:Date;
   fileHash:string;
 }
@@ -167,7 +168,7 @@ export const chatSessionService = {
     const response = await api.get<ChatMessages>(`/chat/${chatId}`);
     return response.data;
   },
-  findChats:async (token):Promise<Chats[]>=>{
+  findChats:async (token:string):Promise<Chats[]>=>{
     const res = await api.get<Chats[]>(`/chat`, {
           headers: {
             Authorization: `Bearer ${token}`
@@ -189,15 +190,15 @@ export const userService={
 export const ingestService = {
   /**
    * PDF INGESTION API INTEGRATION
-   * Endpoint: POST /api/ingest/pdf
+   * Endpoint: POST /api/ingest
    * Payload: FormData with 'file' field
    */
-  uploadPdf: async (file: File,chatId:string): Promise<IngestResponse> => {
+  uploadFile: async (file: File,chatId:string): Promise<IngestResponse> => {
     const formData = new FormData();
     formData.append('file', file);
     console.log("sending chat id " ,chatId);
     
-    const response = await api.post("/doc/ingest/pdf", formData, {
+    const response = await api.post("/document/ingest", formData, {
     headers: {
       "x-chat-id": chatId  ,
      
