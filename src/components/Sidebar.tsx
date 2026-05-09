@@ -119,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         sessionStorage.removeItem('token');
         navigate('/login');
     };
-    console.log("Documets:",chatDocuments);
+    
     const fetchUser=async()=>{
         const userRes=await userService.getUser();
         if(!userRes){
@@ -228,7 +228,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-100">
             <History size={18} />
           </div>
-          <span className="font-bold text-slate-800 tracking-tight">Study History</span>
+          <span className="font-bold text-slate-800 tracking-tight">Recent Chats</span>
         </div>
         {onOpenAdminIngest && (
           <button 

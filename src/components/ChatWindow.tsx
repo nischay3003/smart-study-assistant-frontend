@@ -10,7 +10,7 @@ import LogoutButton from './LogoutButton';
 import Sidebar, { Chat } from './Sidebar';
 import GlobalKnowledgeModal from './GlobalKnowledgeModal';
 import FileUpload from './FileUpload';
-
+import ThoughtStream from './ThoughtStream';
 
 
 
@@ -141,10 +141,11 @@ const ChatWindow: React.FC = () => {
     setChatDocuments([]);
 
     setMessages([
-      { role: 'assistant', content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?" }
+      { role: 'assistant', content: 'Hey 👋 I’m Nishie.\nYour AI bestie for smart ideas, quick answers, creative vibes, and getting things done without the chaos.\n\nWhat are we working on today?' }
     ]);
     setChats(prev => [{ chatId: newChatId, title: "New Chat" }, ...prev]);
   };
+ 
 
   const loadChat = async (id: string) => {
     setChatId(id);
@@ -163,7 +164,7 @@ const ChatWindow: React.FC = () => {
       
       const greeting: Message = {
         role: 'assistant',
-        content: "Hello! I'm your AI Smart Study Assistant. What are we learning today?"
+        content: "Hey 👋 I’m Nishie.\nYour AI bestie for smart ideas, quick answers, creative vibes, and getting things done without the chaos.\n\nWhat are we working on today?"
       };
 
       if (data.messages?.length > 0) {
@@ -276,7 +277,7 @@ const ChatWindow: React.FC = () => {
   
   return (
     <div className="flex h-screen bg-slate-100">
-       <Sidebar
+       <Sidebar 
       chats={chats}
       currentChatId={chatId}
       onSelectChat={loadChat}
@@ -293,15 +294,17 @@ const ChatWindow: React.FC = () => {
         onClose={() => setIsAdminModalOpen(false)} 
         onSuccess={loadGlobalDocuments}
       />
-    <div className="flex flex-col h-screen w-full max-w-4xl mx-auto bg-slate-50 shadow-2xl overflow-hidden border-x border-slate-200 width">
+    
+     <div className="flex flex-col h-screen flex-1 bg-slate-50 shadow-2xl overflow-hidden border-x border-slate-200">
       {/* Header */}
-      <header className="bg-white border-bottom border-slate-200 px-6 py-6 flex items-center justify-between z-10">
+      
+       <header className="bg-white border-b border-slate-200 px-6 py-6 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
             <BookOpen size={24} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-slate-900 leading-tight">StudyGenie AI</h1>
+            <h1 className="text-lg font-bold text-slate-900 leading-tight">Nishie AI</h1>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
               <span className="text-xs text-slate-500 font-medium">Online & Ready</span>
@@ -350,11 +353,17 @@ const ChatWindow: React.FC = () => {
           ))}
           
           {isLoading && (
-            <div className="flex gap-3 animate-pulse">
-              <div className="w-10 h-10 rounded-full bg-slate-200"></div>
-              <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-2">
-                <Loader2 className="animate-spin text-slate-400" size={16} />
-                <span className="text-sm text   -slate-400 font-medium">Thinking...</span>
+            <div className="flex gap-3">
+              <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0"></div>
+              <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-2 shadow-sm min-w-[200px]">
+                {chatId ? (
+                  <ThoughtStream chatId={chatId} />
+                ) : (
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <Loader2 className="animate-spin" size={16} />
+                    <span className="text-sm font-medium">Thinking...</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -403,7 +412,7 @@ const ChatWindow: React.FC = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Ask me anything about your studies..."
+              placeholder="Ask anything"
               className="w-full pl-4 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none text-slate-700 placeholder:text-slate-400"
               style={{ minHeight: '56px', maxHeight: '200px' }}
             />
@@ -426,7 +435,7 @@ const ChatWindow: React.FC = () => {
           
         </div>
         <p className="text-center text-[10px] text-slate-400 mt-4 font-medium uppercase tracking-widest">
-          • AI Smart Study Assistant • 
+          • Nishie AI Assistant • 
         </p>
       </footer>
     </div>
