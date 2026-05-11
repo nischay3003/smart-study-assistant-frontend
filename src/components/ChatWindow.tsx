@@ -212,11 +212,7 @@ const ChatWindow: React.FC = () => {
     let currentChatId = chatIdRef.current; // ✅ use ref to get latest chatId
 
     if (!currentChatId) {
-      const data = await chatSessionService.createChat();
-      currentChatId = data.chatId;
-      chatIdRef.current = currentChatId;
-      setChatId(currentChatId);
-      sessionStorage.setItem('chatId', currentChatId);
+      return;
       
     }
     if (messages.length === 1) {
@@ -287,7 +283,55 @@ const ChatWindow: React.FC = () => {
   const startQuiz = (topic: string) => {
     setActiveQuizTopic(topic);
   };
-  
+  if (!chatId) {
+
+  return (
+
+        <div className="flex h-screen bg-slate-100">
+
+          <Sidebar 
+            chats={chats}
+            
+            currentChatId={chatId}
+            onSelectChat={loadChat}
+            onNewChat={newChat}
+            chatDocuments={chatDocuments}
+            setChatDocuments={setChatDocuments}
+            globalDocuments={globalDocuments}
+            setGlobalDocuments={setGlobalDocuments}
+            onOpenAdminIngest={() => setIsAdminModalOpen(true)}
+            viewerOpen={viewerOpen}
+            setViewerOpen={setViewerOpen}
+            selectedDoc={selectedDoc}
+            setSelectedDoc={setSelectedDoc}
+          />
+
+          <div className="flex-1 flex items-center justify-center bg-slate-50">
+
+            <div className="text-center">
+
+              <h1 className="text-4xl font-bold text-slate-800">
+                Welcome to Nishie AI
+              </h1>
+
+              <p className="mt-3 text-slate-500">
+                Start a new conversation to begin
+              </p>
+
+              <button
+                onClick={newChat}
+                className="mt-6 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition"
+              >
+                New Chat
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      );
+    }
   
   return (
     <div className="flex h-screen bg-slate-100">
@@ -365,7 +409,7 @@ const ChatWindow: React.FC = () => {
         {/* <LogoutButton /> */}
       </div>
       </header>
-      
+          
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative flex flex-col">

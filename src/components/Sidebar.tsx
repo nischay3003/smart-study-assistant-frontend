@@ -118,6 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     const [user, setUser] = useState<User | null>(null);
     const handleLogout = () => {
         sessionStorage.removeItem('token');
+        sessionStorage.removeItem('chatId');
         navigate('/login');
     };
     
