@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { get } from 'http';
 
 
 
@@ -79,15 +80,26 @@ export interface Chats {
   title:string;
   updatedAt:Date;
 }
-export interface ChatDocument{
-  name:string;
-  _id:string;
-  doc_id:string;
-  uploadedAt:Date;
-  fileHash:string;
+export interface Document {
+  _id: string;
+  doc_id: string;
+  title: string;       
+  filename: string | null;
+  mimeType: string | null;
+  size: number;
+  category: string;
+  description: string;
+  fileHash: string | null;
+  type: 'file' | 'text';
+  source: 'personal' | 'global';
+  gridfs_file_id: string | null;
+  uploadedAt: Date;
 }
-export interface GlobalChatDocument{
-  documents:ChatDocument[];
+export interface ChatDocument{
+  documents:Document[]
+}
+export interface GlobalChatDocument {
+  documents: Document[];
 }
 
 export interface IngestResponse {
@@ -97,7 +109,7 @@ export interface IngestResponse {
 
 export interface ChatMessages {
   messages: Message[];
-  documents: ChatDocument[];
+  documents: Document[];
 
 }
 export interface User {
@@ -210,9 +222,9 @@ export const adminService = {
     });
     return response.data;
   },
-  getGlobalDocuments: async (): Promise<ChatDocument[]> => {
+  getGlobalDocuments: async (): Promise<GlobalChatDocument> => {
     const response = await api.get<GlobalChatDocument>('/document/global');
-    return response.data.documents; // Assuming the API returns { documents: ChatDocument[] }
+    return response.data; // Assuming the API returns { documents: ChatDocument[] }
   }
 };
 
@@ -223,25 +235,28 @@ export const userService={
   }
 }
 
-export const ingestService = {
+export const documentService = {
   /**
    * PDF INGESTION API INTEGRATION
    * Endpoint: POST /api/ingest
    * Payload: FormData with 'file' field
    */
-  uploadFile: async (file: File,chatId:string): Promise<IngestResponse> => {
+  uploadFile: async (file: File, chatId: string): Promise<IngestResponse> => {
     const formData = new FormData();
     formData.append('file', file);
-    console.log("sending chat id " ,chatId);
+    console.log("sending chat id ", chatId);
     
     const response = await api.post("/document/ingest", formData, {
-    headers: {
-      "x-chat-id": chatId  ,
-     
-    },
-  });
+      headers: {
+        "x-chat-id": chatId,
+      },
+    });
     return response.data;
   },
+  getChatDocuments: async (chatId: string): Promise<ChatDocument> => {
+    const response = await api.get<ChatDocument>(`/document/chat/${chatId}`);
+    return response.data;
+  }
 };
 
 export const quizService = {

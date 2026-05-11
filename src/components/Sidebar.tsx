@@ -63,37 +63,34 @@
 // };
 
 // export default Sidebar;
-import React from "react";
-import { useState,useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import { Trash2 } from "lucide-react";
-
-import { Plus, MessageSquare, History, Settings, LogOut, User, Database } from "lucide-react";
+import { Plus, MessageSquare, History, LogOut, Database } from "lucide-react";
+import { userService, ChatDocument, GlobalChatDocument } from "../services/api";
 
 export type Chat = {
   chatId: string;
   title?: string;
   timestamp?: string;
 };
-type Document={
-    name:string;
-  _id:string;
-  doc_id:string;
-  uploadedAt:Date;
-  fileHash:string;
-}
+
 type SidebarProps = {
   chats: Chat[];
   currentChatId: string | null;
   onSelectChat: (chatId: string) => void;
   onNewChat: () => void;
   onOpenAdminIngest?: () => void;
-  chatDocuments:Document[];
-  setChatDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
-  globalDocuments: Document[];
-  setGlobalDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
+  chatDocuments: ChatDocument;
+  setChatDocuments: React.Dispatch<React.SetStateAction<ChatDocument>>;
+  globalDocuments: GlobalChatDocument;
+  setGlobalDocuments: React.Dispatch<React.SetStateAction<GlobalChatDocument>>;
+  viewerOpen: boolean;
+  setViewerOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedDoc: any;
+  setSelectedDoc: React.Dispatch<React.SetStateAction<any>>;
 };
-import {userService} from "../services/api"
+
 type User = {
   name: string;
   email: string;
@@ -111,6 +108,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   setChatDocuments,
   globalDocuments,
   setGlobalDocuments,
+  viewerOpen,
+  setViewerOpen,
+  selectedDoc,
+  setSelectedDoc,
   onOpenAdminIngest
 }) => {
     const navigate = useNavigate();
@@ -161,9 +162,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         const data = await res.json();
 
         if (res.ok) {
-          setGlobalDocuments((prev) =>
-            prev.filter((doc) => doc.doc_id !== doc_id)
-          );
+          setGlobalDocuments((prev) => ({
+            ...prev,
+            documents: prev.documents.filter(
+              (doc) => doc.doc_id !== doc_id
+            ),
+          }));
         } else {
           console.error(data.message);
           alert("Failed to delete global document: " + data.message);
@@ -203,13 +207,16 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         const data = await res.json();
 
-        if (res.ok) {
-          setChatDocuments((prev) =>
-            prev.filter((doc) => doc.doc_id !== doc_id)
-          );
+       if (res.ok) {
+          setChatDocuments((prev) => ({
+            ...prev,
+            documents: prev.documents.filter(
+              (doc) => doc.doc_id !== doc_id
+            ),
+          }));
         } else {
           console.error(data.message);
-          alert("Failed to delete document: " + data.message);
+          alert("Failed to delete Chat document: " + data.message);
         }
       } catch (err) {
         console.error("Delete failed", err);
@@ -296,15 +303,22 @@ const Sidebar: React.FC<SidebarProps> = ({
         Uploaded Documents
 
         <div className="mt-1 space-y-1">
-          {chatDocuments?.length > 0 ? (
-            chatDocuments.map((doc: any) => (
+          {chatDocuments?.documents.length > 0 ? (
+            chatDocuments.documents.map((doc: any) => (
               <div
                 key={doc.doc_id}
                 className="flex items-center justify-between text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded group"
               >
                 {/* File name */}
-                <span className="truncate">{doc.name}</span>
-
+                <button onClick={()=>{
+                  setSelectedDoc(doc);
+                  setViewerOpen(true);
+                }}>
+                 <span className="truncate">{(doc.title || doc.name || "Untitled").length > 25
+                                                ? (doc.title || doc.name || "Untitled").slice(0, 22) + "..."
+                                                  : (doc.title || doc.name || "Untitled")}
+                </span>  
+                </button>
                 {/* Delete button */}
                 <button
                   onClick={() => deleteDocument(doc.doc_id)}
@@ -323,14 +337,19 @@ const Sidebar: React.FC<SidebarProps> = ({
         Global Documents
 
         <div className="mt-1 space-y-1">
-          {globalDocuments?.length > 0 ? (
-            globalDocuments.map((doc: any) => (
+          {globalDocuments?.documents.length > 0 ? (
+            globalDocuments.documents.map((doc: any) => (
               <div
                 key={doc.doc_id}
                 className="flex items-center justify-between text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded group"
               >
                 {/* File name */}
-                <span className="truncate">{doc.name}</span>
+                <button onClick={()=>{
+                  setSelectedDoc(doc);
+                  setViewerOpen(true);
+                }}>
+                  <span className="truncate">{doc.title.length > 25 ? doc.title.slice(0, 22) + '...' : doc.title}</span>   
+                </button>
                 <button
                   onClick={() => deleteGlobalDocument(doc.doc_id)}
                   className="opacity-0 group-hover:opacity-100 transition text-red-500 hover:text-red-700 ml-2"

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle2, XCircle, Loader2, Plus } from 'lucide-react';
-import { ingestService } from '../services/api';
+import { documentService } from '../services/api';
 import { motion, AnimatePresence } from 'motion/react';
 type FileUploadProps = {
  
@@ -36,7 +36,7 @@ const FileUpload: React.FC<FileUploadProps> = ({chatId,onUploadSuccess}) => {
     setStatus('idle');
 
     try {
-      await ingestService.uploadFile(file,chatId);
+      await documentService.uploadFile(file,chatId);
       setStatus('success');
       onUploadSuccess?.();
       setTimeout(() => {
